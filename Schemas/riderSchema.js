@@ -1,8 +1,8 @@
-// Schemas/userSchema.js
+// Schemas/riderSchema.js
 import mongoose from 'mongoose';
 import normalize from 'normalize-mongoose';
 
-const userSchema = new mongoose.Schema({
+const riderSchema = new mongoose.Schema({
   fullName: {
     type: String,
     required: true,
@@ -19,38 +19,18 @@ const userSchema = new mongoose.Schema({
     required: true,
     minlength: 6,
   },
-  email: {
-    type: String,
-    lowercase: true,
-    trim: true,
-  },
-  ghanaCard: {
+  driverLicense: {
     type: [String],
     required: true,
     validate: {
       validator: val => val.length >= 1 && val.length <= 2,
-      message: 'Upload 1 or 2 Ghana Card images',
+      message: 'Upload 1 or 2 images of driver’s license',
     },
-  },
-  medicalRecords: {
-    type: [String],
-  },
-  typeOfDisability: {
-    type: String,
-    required: true,
-  },
-  assistanceNeeds: {
-    type: String,
-    required: true,
-  },
-  employmentStatus: {
-    type: String,
-    enum: ['employed', 'unemployed'],
   },
   role: {
     type: String,
-    enum: ['user', 'admin', 'rider'],
-    default: 'user',
+    enum: ['rider'],
+    default: 'rider',
   },
 }, {
   timestamps: true,
@@ -58,8 +38,7 @@ const userSchema = new mongoose.Schema({
   toObject: { virtuals: true },
 });
 
-// 👇 Normalize + Remove _id from output
-userSchema.set('toJSON', {
+riderSchema.set('toJSON', {
   virtuals: true,
   versionKey: false,
   transform: (_, ret) => {
@@ -67,7 +46,7 @@ userSchema.set('toJSON', {
   }
 });
 
-userSchema.set('toObject', {
+riderSchema.set('toObject', {
   virtuals: true,
   versionKey: false,
   transform: (_, ret) => {
@@ -75,5 +54,5 @@ userSchema.set('toObject', {
   }
 });
 
-userSchema.plugin(normalize);
-export default userSchema;
+riderSchema.plugin(normalize);
+export default riderSchema;

@@ -1,26 +1,33 @@
 // Routes/authRoutes.js
 import express from 'express';
-import { loginUser, registerUser, logoutUser } from '../Controllers/authController.js';
-import { userUploadMiddleware } from '../Middleware/uploadMiddleware.js';
-import { verifyToken } from '../Middleware/authMiddleware.js';
+import upload from '../Middleware/multer.js';
+
+import {
+  registerUser,
+  registerRider,
+  registerAdmin,
+  loginUser,
+} from '../Controllers/authController.js';
 
 const router = express.Router();
 
-// Register with uploads
-router.post('/register', userUploadMiddleware, registerUser);
+// General user registration
+router.post('/register', upload.fields([
+  { name: 'ghanaCard', maxCount: 2 },
+  { name: 'medicalRecords', maxCount: 5 },
+]), registerUser);
 
-// Login
+// Rider registration
+router.post('/register-rider', upload.fields([
+  { name: 'driverLicense', maxCount: 2 },
+]), registerRider);
+
+// Admin registration
+router.post('/register-admin', upload.fields([
+  { name: 'ghanaCard', maxCount: 2 },
+]), registerAdmin);
+
+// Login (all roles)
 router.post('/login', loginUser);
-
-// Logout placeholder
-router.post('/logout', logoutUser);
-
-// Protected: Get logged-in user's profile
-router.get('/profile', verifyToken, (req, res) => {
-  res.status(200).json({
-    message: 'User profile loaded',
-    user: req.user
-  });
-});
 
 export default router;

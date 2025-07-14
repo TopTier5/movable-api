@@ -1,62 +1,39 @@
+// index.js
 import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import cors from 'cors';
-
 import authRoutes from './Routes/authRoutes.js';
 
 dotenv.config();
 
 const app = express();
 
-// Middleware
+// Middleware to parse JSON and form-data
 app.use(cors());
-app.use(express.json()); // Parse JSON bodies
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded form data (optional)
+app.use(express.json()); // 🔥 This is the key for req.body to work!
+app.use(express.urlencoded({ extended: true }));
 
-// Mount your authentication routes
+// Routes
 app.use('/api/auth', authRoutes);
 
+// Default route
+app.get('/', (req, res) => {
+  res.send('Movable API is running...');
+});
+
 // Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log('Connected to MongoDB');
-    app.listen(process.env.PORT || 4000, () => {
-      console.log(`Server running on port ${process.env.PORT || 4000}`);
-    });
-  })
-  .catch((err) => {
-    console.error('MongoDB connection error:', err.message);
-  });
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => {
+  console.log('Connected to MongoDB Atlas');
+}).catch((err) => {
+  console.error('MongoDB connection error:', err);
+});
 
-
-
-
-// // server.js
-// import express from 'express';
-// import dotenv from 'dotenv';
-// import cors from 'cors';
-// import mongoose from 'mongoose';
-// import authRoutes from './Routes/authRoutes.js';
-
-// dotenv.config();
-
-// const app = express();
-
-// // Connect to MongoDB (leaner setup)
-// mongoose.connect(process.env.MONGO_URI)
-//   .then(() => console.log('MongoDB Connected'))
-//   .catch(err => console.error('MongoDB Connection Error:', err));
-
-// // Middleware
-// app.use(cors());            // frontend access across domains
-// app.use(express.json());    // Parses incoming JSON payloads
-
-// // Role-aware routes
-// app.use('/api/auth', authRoutes); // Auth routes for user, driver, admin
-
-// // Launch the server
-// const PORT = process.env.PORT || 5000;
-// app.listen(PORT, () => {
-//   console.log(`Movable backend is live on port ${PORT}`);
-// });
+// Start Server
+const PORT = process.env.PORT || 8000;
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});

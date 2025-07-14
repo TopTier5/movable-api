@@ -1,158 +1,193 @@
-// controllers/authController.js
+// Controllers/authController.js
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import Joi from 'joi';
 import User from '../Models/user.js';
-import cloudinary from '../Utils/cloudinaryConfig.js';
+import Rider from '../Models/riderModel.js';
+import Admin from '../Models/adminModel.js';
 
-// 📦 Validate user input
-const signupSchema = Joi.object({
-  name: Joi.string().required(),
-  phone: Joi.string().required(),
-  email: Joi.string().email().allow('', null),
-  password: Joi.string().min(6).required(),
-  role: Joi.string().valid('user', 'admin', 'driver').default('user'),
-  disabilityType: Joi.string().optional(),
-  assistanceDescription: Joi.string().optional(),
-  employmentStatus: Joi.boolean().optional()
-});
-
-// ✨ Register a new user
+// ========== REGISTER USER ==========
 export const registerUser = async (req, res) => {
   try {
-    const { error, value } = signupSchema.validate(req.body);
-    if (error) return res.status(400).json({ message: error.details[0].message });
-
     const {
-      name, phone, email, password, role,
-      disabilityType, assistanceDescription, employmentStatus
-    } = value;
+      fullName,
+      phoneNumber,
+      password,
+      email,
+      typeOfDisability,
+      assistanceNeeds,
+      employmentStatus
+    } = req.body;
 
-    const existingUser = await User.findOne({ phone });
-    if (existingUser) return res.status(409).json({ message: 'Phone number already registered' });
+    const existing = await User.findOne({ phoneNumber });
+    if (existing) {
+      return res.status(409).json({ success: false, message: 'Phone number already exists' });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 🌩 Upload Ghana Card (up to 2 files)
-    let ghanaCardDocs = [];
-    if (req.files?.ghanaCard) {
-      for (const file of req.files.ghanaCard) {
-        const uploadPromise = new Promise((resolve, reject) => {
-          const stream = cloudinary.uploader.upload_stream(
-            {
-              folder: 'movable/ghanaCard',
-              resource_type: 'auto'
-            },
-            (err, result) => {
-              if (err) reject(err);
-              else resolve({
-                url: result.secure_url,
-                public_id: result.public_id,
-                format: result.format,
-                type: result.resource_type
-              });
-            }
-          );
-          stream.end(file.buffer);
-        });
+    const ghanaCard = (req.files['ghanaCard'] || []).map(file => file.path);
+    const medicalRecords = (req.files['medicalRecords'] || []).map(file => file.path);
 
-        const result = await uploadPromise;
-        ghanaCardDocs.push(result);
-      }
+    if (ghanaCard.length < 1 || ghanaCard.length > 2) {
+      return res.status(400).json({ success: false, message: 'Upload 1 or 2 Ghana Card images' });
     }
 
-    // 🏥 Upload medical records
-    let medicalRecords = [];
-    if (req.files?.medicalRecords) {
-      for (const file of req.files.medicalRecords) {
-        const uploadPromise = new Promise((resolve, reject) => {
-          const stream = cloudinary.uploader.upload_stream(
-            {
-              folder: 'movable/medicalRecords',
-              resource_type: 'auto'
-            },
-            (err, result) => {
-              if (err) reject(err);
-              else resolve({
-                url: result.secure_url,
-                public_id: result.public_id,
-                format: result.format,
-                type: result.resource_type
-              });
-            }
-          );
-          stream.end(file.buffer);
-        });
-
-        const result = await uploadPromise;
-        medicalRecords.push(result);
-      }
-    }
-
-    // 👤 Create new user
-    const user = await User.create({
-      name,
-      phone,
-      email,
+    const newUser = await User.create({
+      fullName,
+      phoneNumber,
       password: hashedPassword,
-      role,
-      disabilityType,
-      assistanceDescription,
+      email,
+      ghanaCard,
+      medicalRecords,
+      typeOfDisability,
+      assistanceNeeds,
       employmentStatus,
-      ghanaCard: ghanaCardDocs,
-      medicalRecords
+      role: 'user'
     });
 
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: '7d'
+    const token = jwt.sign({ id: newUser.id, role: 'user' }, process.env.JWT_SECRET, {
+      expiresIn: '7d',
     });
 
     res.status(201).json({
-      message: 'User registered and logged in',
+      success: true,
+      message: 'User registered successfully',
+      user: newUser,
       token,
-      user
     });
   } catch (err) {
-    console.error('Registration error:', err.message);
-    res.status(500).json({ message: 'Server error during registration' });
+    console.error('User Registration Error:', err);
+    res.status(500).json({ success: false, message: 'Server error', error: err.message });
   }
 };
 
-// 🔑 Log in user
-export const loginUser = async (req, res) => {
-  const { phone, password } = req.body;
-
+// ========== REGISTER RIDER ==========
+export const registerRider = async (req, res) => {
   try {
-    if (!phone || !password) {
-      return res.status(400).json({ message: 'Phone and password are required' });
+    const { fullName, phoneNumber, password } = req.body;
+
+    const existing = await Rider.findOne({ phoneNumber });
+    if (existing) {
+      return res.status(409).json({ success: false, message: 'Phone number already exists' });
     }
 
-    const user = await User.findOne({ phone });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const driverLicense = (req.files['driverLicense'] || []).map(file => file.path);
+
+    if (driverLicense.length < 1 || driverLicense.length > 2) {
+      return res.status(400).json({ success: false, message: 'Upload 1 or 2 Driver’s License images' });
+    }
+
+    const newRider = await Rider.create({
+      fullName,
+      phoneNumber,
+      password: hashedPassword,
+      driverLicense,
+      role: 'rider'
+    });
+
+    const token = jwt.sign({ id: newRider.id, role: 'rider' }, process.env.JWT_SECRET, {
+      expiresIn: '7d',
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Rider registered successfully',
+      rider: newRider,
+      token,
+    });
+  } catch (err) {
+    console.error('Rider Registration Error:', err);
+    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+  }
+};
+
+// ========== REGISTER ADMIN ==========
+export const registerAdmin = async (req, res) => {
+  try {
+    const { fullName, phoneNumber, email, password } = req.body;
+
+    const existing = await Admin.findOne({ phoneNumber });
+    if (existing) {
+      return res.status(409).json({ success: false, message: 'Phone number already exists' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const ghanaCard = (req.files['ghanaCard'] || []).map(file => file.path);
+
+    if (ghanaCard.length < 1 || ghanaCard.length > 2) {
+      return res.status(400).json({ success: false, message: 'Upload 1 or 2 Ghana Card images' });
+    }
+
+    const newAdmin = await Admin.create({
+      fullName,
+      phoneNumber,
+      email,
+      password: hashedPassword,
+      ghanaCard,
+      role: 'admin'
+    });
+
+    const token = jwt.sign({ id: newAdmin.id, role: 'admin' }, process.env.JWT_SECRET, {
+      expiresIn: '7d',
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Admin registered successfully',
+      admin: newAdmin,
+      token,
+    });
+  } catch (err) {
+    console.error('Admin Registration Error:', err);
+    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+  }
+};
+
+// ========== LOGIN (ALL ROLES) ==========
+export const loginUser = async (req, res) => {
+  try {
+    const { phoneNumber, password } = req.body;
+
+    if (!phoneNumber || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number and password are required',
+      });
+    }
+
+    let user =
+      await Admin.findOne({ phoneNumber }) ||
+      await Rider.findOne({ phoneNumber }) ||
+      await User.findOne({ phoneNumber });
+
     if (!user) {
-      return res.status(401).json({ message: 'Invalid phone or password' });
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid phone or password' });
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: '7d'
-    });
+    const token = jwt.sign(
+      { id: user.id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
     res.status(200).json({
+      success: true,
       message: 'Login successful',
+      user,
       token,
-      user
     });
   } catch (err) {
-    console.error('Login error:', err.message);
-    res.status(500).json({ message: 'Server error during login' });
+    console.error('Login Error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: err.message,
+    });
   }
-};
-
-// 🚪 Log out user
-export const logoutUser = (req, res) => {
-  res.status(200).json({ message: 'Logout successful' });
 };

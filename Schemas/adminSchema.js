@@ -1,8 +1,8 @@
-// Schemas/userSchema.js
+// Schemas/adminSchema.js
 import mongoose from 'mongoose';
 import normalize from 'normalize-mongoose';
 
-const userSchema = new mongoose.Schema({
+const adminSchema = new mongoose.Schema({
   fullName: {
     type: String,
     required: true,
@@ -14,15 +14,16 @@ const userSchema = new mongoose.Schema({
     unique: true,
     match: [/^\+233\d{9}$/, 'Phone number must be in +233XXXXXXXXX format'],
   },
+  email: {
+    type: String,
+    required: true,
+    lowercase: true,
+    trim: true,
+  },
   password: {
     type: String,
     required: true,
     minlength: 6,
-  },
-  email: {
-    type: String,
-    lowercase: true,
-    trim: true,
   },
   ghanaCard: {
     type: [String],
@@ -32,25 +33,10 @@ const userSchema = new mongoose.Schema({
       message: 'Upload 1 or 2 Ghana Card images',
     },
   },
-  medicalRecords: {
-    type: [String],
-  },
-  typeOfDisability: {
-    type: String,
-    required: true,
-  },
-  assistanceNeeds: {
-    type: String,
-    required: true,
-  },
-  employmentStatus: {
-    type: String,
-    enum: ['employed', 'unemployed'],
-  },
   role: {
     type: String,
-    enum: ['user', 'admin', 'rider'],
-    default: 'user',
+    enum: ['admin'],
+    default: 'admin',
   },
 }, {
   timestamps: true,
@@ -58,8 +44,7 @@ const userSchema = new mongoose.Schema({
   toObject: { virtuals: true },
 });
 
-// 👇 Normalize + Remove _id from output
-userSchema.set('toJSON', {
+adminSchema.set('toJSON', {
   virtuals: true,
   versionKey: false,
   transform: (_, ret) => {
@@ -67,7 +52,7 @@ userSchema.set('toJSON', {
   }
 });
 
-userSchema.set('toObject', {
+adminSchema.set('toObject', {
   virtuals: true,
   versionKey: false,
   transform: (_, ret) => {
@@ -75,5 +60,5 @@ userSchema.set('toObject', {
   }
 });
 
-userSchema.plugin(normalize);
-export default userSchema;
+adminSchema.plugin(normalize);
+export default adminSchema;
