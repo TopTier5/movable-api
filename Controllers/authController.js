@@ -1,4 +1,3 @@
-// Controllers/authController.js
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../Models/user.js';
@@ -18,7 +17,6 @@ export const registerUser = async (req, res) => {
       employmentStatus
     } = req.body;
 
-    // Basic validation
     if (!fullName || !phoneNumber || !password || !typeOfDisability || !assistanceNeeds) {
       return res.status(400).json({
         success: false,
@@ -26,13 +24,11 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    // Ghana Card validation
     const ghanaCard = (req.files['ghanaCard'] || []).map(file => file.path);
     if (ghanaCard.length < 1 || ghanaCard.length > 2) {
       return res.status(400).json({ success: false, message: 'Upload 1 or 2 Ghana Card images' });
     }
 
-    // Check for existing phone number
     const existing = await User.findOne({ phoneNumber });
     if (existing) {
       return res.status(409).json({ success: false, message: 'Phone number already exists' });
@@ -66,7 +62,7 @@ export const registerUser = async (req, res) => {
     });
 
   } catch (err) {
-    console.error('User Registration Error:', err);
+    console.error('User Registration Error:', JSON.stringify(err, null, 2));
     res.status(500).json({ success: false, message: 'Server error', error: err.message });
   }
 };
@@ -111,7 +107,7 @@ export const registerRider = async (req, res) => {
       token,
     });
   } catch (err) {
-    console.error('Rider Registration Error:', err);
+    console.error('Rider Registration Error:', JSON.stringify(err, null, 2));
     res.status(500).json({ success: false, message: 'Server error', error: err.message });
   }
 };
@@ -157,7 +153,7 @@ export const registerAdmin = async (req, res) => {
       token,
     });
   } catch (err) {
-    console.error('Admin Registration Error:', err);
+    console.error('Admin Registration Error:', JSON.stringify(err, null, 2));
     res.status(500).json({ success: false, message: 'Server error', error: err.message });
   }
 };
@@ -201,7 +197,7 @@ export const loginUser = async (req, res) => {
       token,
     });
   } catch (err) {
-    console.error('Login Error:', err);
+    console.error('Login Error:', JSON.stringify(err, null, 2));
     res.status(500).json({
       success: false,
       message: 'Server error',
