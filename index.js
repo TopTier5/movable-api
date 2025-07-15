@@ -9,9 +9,9 @@ dotenv.config();
 
 const app = express();
 
-// Middleware to parse JSON and form-data
+// Middleware
 app.use(cors());
-app.use(express.json()); // 🔥 This is the key for req.body to work!
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
@@ -19,21 +19,31 @@ app.use('/api/auth', authRoutes);
 
 // Default route
 app.get('/', (req, res) => {
-  res.send('Movable API is running...');
+  res.send('🚀 Movable API is running...');
 });
 
-// Connect to MongoDB
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('🔴 Uncaught Error:', JSON.stringify(err, null, 2));
+  res.status(500).json({
+    success: false,
+    message: 'Internal Server Error',
+    error: err.message || 'Something went wrong',
+  });
+});
+
+// MongoDB Connection
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 }).then(() => {
   console.log('Connected to MongoDB Atlas');
 }).catch((err) => {
-  console.error('MongoDB connection error:', err);
+  console.error('MongoDB connection error:', JSON.stringify(err, null, 2));
 });
 
 // Start Server
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on: http://localhost:${PORT}`);
 });
