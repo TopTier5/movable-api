@@ -1,4 +1,3 @@
-// Schemas/userSchema.js
 import mongoose from 'mongoose';
 import normalize from 'normalize-mongoose';
 
@@ -12,6 +11,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
+    sparse: true,
     match: [/^\+233\d{9}$/, 'Phone number must be in +233XXXXXXXXX format'],
   },
   password: {
@@ -56,23 +56,6 @@ const userSchema = new mongoose.Schema({
   timestamps: true,
   toJSON: { virtuals: true },
   toObject: { virtuals: true },
-});
-
-// 👇 Normalize + Remove _id from output
-userSchema.set('toJSON', {
-  virtuals: true,
-  versionKey: false,
-  transform: (_, ret) => {
-    delete ret._id;
-  }
-});
-
-userSchema.set('toObject', {
-  virtuals: true,
-  versionKey: false,
-  transform: (_, ret) => {
-    delete ret._id;
-  }
 });
 
 userSchema.plugin(normalize);

@@ -18,19 +18,28 @@ export const registerUser = async (req, res) => {
       employmentStatus
     } = req.body;
 
+    // Basic validation
+    if (!fullName || !phoneNumber || !password || !typeOfDisability || !assistanceNeeds) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields',
+      });
+    }
+
+    // Ghana Card validation
+    const ghanaCard = (req.files['ghanaCard'] || []).map(file => file.path);
+    if (ghanaCard.length < 1 || ghanaCard.length > 2) {
+      return res.status(400).json({ success: false, message: 'Upload 1 or 2 Ghana Card images' });
+    }
+
+    // Check for existing phone number
     const existing = await User.findOne({ phoneNumber });
     if (existing) {
       return res.status(409).json({ success: false, message: 'Phone number already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    const ghanaCard = (req.files['ghanaCard'] || []).map(file => file.path);
     const medicalRecords = (req.files['medicalRecords'] || []).map(file => file.path);
-
-    if (ghanaCard.length < 1 || ghanaCard.length > 2) {
-      return res.status(400).json({ success: false, message: 'Upload 1 or 2 Ghana Card images' });
-    }
 
     const newUser = await User.create({
       fullName,
@@ -55,6 +64,7 @@ export const registerUser = async (req, res) => {
       user: newUser,
       token,
     });
+
   } catch (err) {
     console.error('User Registration Error:', err);
     res.status(500).json({ success: false, message: 'Server error', error: err.message });
@@ -65,6 +75,10 @@ export const registerUser = async (req, res) => {
 export const registerRider = async (req, res) => {
   try {
     const { fullName, phoneNumber, password } = req.body;
+
+    if (!fullName || !phoneNumber || !password) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
 
     const existing = await Rider.findOne({ phoneNumber });
     if (existing) {
@@ -106,6 +120,10 @@ export const registerRider = async (req, res) => {
 export const registerAdmin = async (req, res) => {
   try {
     const { fullName, phoneNumber, email, password } = req.body;
+
+    if (!fullName || !phoneNumber || !email || !password) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
 
     const existing = await Admin.findOne({ phoneNumber });
     if (existing) {
