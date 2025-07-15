@@ -15,27 +15,31 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
-    let folder = 'movable/uploads';
-
-    if (file.fieldname === 'ghanaCard') {
-      folder = 'movable/ghanaCard';
-    } else if (file.fieldname === 'medicalRecords') {
-      folder = 'movable/medicalRecords';
-    } else if (file.fieldname === 'driverLicense') {
-      folder = 'movable/riders/license';
-    } else if (file.fieldname === 'adminGhanaCard') {
-      folder = 'movable/admins/ghanaCard';
-    }
+    // Set dynamic folder name based on the field
+    let folder = 'movable/general';
+    if (file.fieldname === 'ghanaCard') folder = 'movable/ghanaCard';
+    if (file.fieldname === 'medicalRecords') folder = 'movable/medicalRecords';
+    if (file.fieldname === 'driverLicense') folder = 'movable/driverLicense';
 
     return {
       folder,
-      resource_type: 'image',
-      allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+      resource_type: 'auto', // auto = handles pdf, image, etc.
+      allowedFormats: ['jpg', 'jpeg', 'png', 'pdf'],
+      public_id: `${Date.now()}-${file.originalname}`,
     };
   },
 });
 
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only .jpg, .jpeg, .png, and .pdf files are allowed.'));
+    }
+  },
+});
 
 export default upload;
-
