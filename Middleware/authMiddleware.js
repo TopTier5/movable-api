@@ -1,11 +1,12 @@
-// Middleware/authMiddleware.js
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+
 import User from '../Models/user.js';
+import Driver from '../Models/driverModel.js';
+import Admin from '../Models/adminModel.js';
 
 dotenv.config();
 
-// ✅ Middleware to verify token and attach user to request
 export const protect = async (req, res, next) => {
   let token;
 
@@ -15,11 +16,43 @@ export const protect = async (req, res, next) => {
   ) {
     try {
       token = req.headers.authorization.split(' ')[1];
-
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = await User.findById(decoded.id).select('-password');
+
+      const role = decoded.role;
+      const id = decoded.id;
+      let currentUser;
+
+      // Try loading from respective model
+      if (role === 'user') {
+        currentUser = await User.findById(id).select('-password');
+      } else if (role === 'driver') {
+        currentUser = await Driver.findById(id).select('-password');
+      } else if (role === 'admin') {
+        currentUser = await Admin.findById(id).select('-password');
+      } else {
+        // fallback: try all models
+        currentUser =
+          (await User.findById(id).select('-password')) ||
+          (await Driver.findById(id).select('-password')) ||
+          (await Admin.findById(id).select('-password'));
+
+        if (!currentUser) {
+          return res.status(401).json({
+            success: false,
+            message: 'User not found in any role',
+          });
+        }
+      }
+
+      // ✅ Manually attach the role to the user object
+      req.user = {
+        ...currentUser.toObject(), // ensures we spread plain object, not Mongoose doc
+        role: role, // attach role explicitly from token
+      };
+
       next();
     } catch (err) {
+      console.error('Auth Error:', err.message);
       return res.status(401).json({
         success: false,
         message: 'Invalid or expired token',
@@ -31,17 +64,4 @@ export const protect = async (req, res, next) => {
       message: 'No token provided',
     });
   }
-};
-
-// ✅ Middleware to allow only certain roles
-export const authorizeRoles = (...roles) => {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: `Access denied: role "${req.user.role}" not authorized`,
-      });
-    }
-    next();
-  };
 };

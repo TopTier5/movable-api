@@ -17,12 +17,14 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
+    select: false,
     minlength: 6,
   },
   email: {
-    type: String,
-    lowercase: true,
-    trim: true,
+  type: String,
+  lowercase: true,
+  trim: true,
+  match: [/^\S+@\S+\.\S+$/, 'Invalid email format'],
   },
   ghanaCard: {
     type: [String],
@@ -47,9 +49,25 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['employed', 'unemployed'],
   },
+
+  // New editable profile fields
+  address: {
+    type: String,
+    trim: true,
+  },
+  emergencyContactName: {
+    type: String,
+    trim: true,
+  },
+  emergencyContactPhone: {
+    type: String,
+    match: [/^\+233\d{9}$/, 'Phone number must be in +233XXXXXXXXX format'],
+  },
+
+  // Role update: changed 'rider' to 'driver'
   role: {
     type: String,
-    enum: ['user', 'admin', 'rider'],
+    enum: ['user', 'admin', 'driver'],
     default: 'user',
   },
 }, {

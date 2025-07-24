@@ -1,207 +1,179 @@
-import bcrypt from 'bcryptjs';
+// Controllers/authController.js
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
 import User from '../Models/user.js';
-import Rider from '../Models/riderModel.js';
+import Driver from '../Models/driverModel.js';
 import Admin from '../Models/adminModel.js';
 
-// ========== REGISTER USER ==========
+dotenv.config();
+const JWT_SECRET = process.env.JWT_SECRET;
+
+// Helper: sanitize user before sending in response
+const sanitizeUser = user => {
+  const obj = user.toObject?.() || { ...user };
+  delete obj.password;
+  return obj;
+};
+
+// REGISTER: USER (RIDE REQUESTER)
 export const registerUser = async (req, res) => {
   try {
     const {
       fullName,
       phoneNumber,
       password,
-      email,
+      address,
       typeOfDisability,
       assistanceNeeds,
-      employmentStatus
     } = req.body;
 
-    if (!fullName || !phoneNumber || !password || !typeOfDisability || !assistanceNeeds) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields',
-      });
+    if (!req.files?.ghanaCard?.length) {
+      return res.status(400).json({ success: false, message: 'Ghana Card file required' });
+    }
+    if (!req.files?.medicalRecords?.length) {
+      return res.status(400).json({ success: false, message: 'Medical Records required' });
     }
 
-    const ghanaCard = (req.files['ghanaCard'] || []).map(file => file.path);
-    if (ghanaCard.length < 1 || ghanaCard.length > 2) {
-      return res.status(400).json({ success: false, message: 'Upload 1 or 2 Ghana Card images' });
-    }
-
-    const existing = await User.findOne({ phoneNumber });
-    if (existing) {
-      return res.status(409).json({ success: false, message: 'Phone number already exists' });
-    }
+    const ghanaCardFiles = req.files.ghanaCard.map(file => file.path);
+    const medicalRecords = req.files.medicalRecords.map(file => file.path);
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const medicalRecords = (req.files['medicalRecords'] || []).map(file => file.path);
 
-    const newUser = await User.create({
+    const newUser = new User({
       fullName,
       phoneNumber,
       password: hashedPassword,
-      email,
-      ghanaCard,
-      medicalRecords,
+      address,
       typeOfDisability,
       assistanceNeeds,
-      employmentStatus,
-      role: 'user'
+      ghanaCard: ghanaCardFiles,
+      medicalRecords,
     });
 
-    const token = jwt.sign({ id: newUser.id, role: 'user' }, process.env.JWT_SECRET, {
-      expiresIn: '7d',
-    });
+    await newUser.save();
+
+    const token = jwt.sign({ id: newUser._id, role: 'user' }, JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
-      user: newUser,
+      data: sanitizeUser(newUser),
       token,
     });
-
   } catch (err) {
-    console.error('User Registration Error:', JSON.stringify(err, null, 2));
-    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+    console.error('User registration error:', err);
+    res.status(500).json({ success: false, message: 'User registration failed', error: err.message });
   }
 };
 
-// ========== REGISTER RIDER ==========
-export const registerRider = async (req, res) => {
+// REGISTER: DRIVER
+export const registerDriver = async (req, res) => {
   try {
     const { fullName, phoneNumber, password } = req.body;
 
-    if (!fullName || !phoneNumber || !password) {
-      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    if (!req.files?.driverLicense?.length) {
+      return res.status(400).json({ success: false, message: 'Driver License required' });
     }
 
-    const existing = await Rider.findOne({ phoneNumber });
-    if (existing) {
-      return res.status(409).json({ success: false, message: 'Phone number already exists' });
-    }
-
+    const driverLicenseFiles = req.files.driverLicense.map(file => file.path);
     const hashedPassword = await bcrypt.hash(password, 10);
-    const driverLicense = (req.files['driverLicense'] || []).map(file => file.path);
 
-    if (driverLicense.length < 1 || driverLicense.length > 2) {
-      return res.status(400).json({ success: false, message: 'Upload 1 or 2 Driver’s License images' });
-    }
-
-    const newRider = await Rider.create({
+    const newDriver = new Driver({
       fullName,
       phoneNumber,
       password: hashedPassword,
-      driverLicense,
-      role: 'rider'
+      driverLicense: driverLicenseFiles,
     });
 
-    const token = jwt.sign({ id: newRider.id, role: 'rider' }, process.env.JWT_SECRET, {
-      expiresIn: '7d',
-    });
+    await newDriver.save();
+
+    const token = jwt.sign({ id: newDriver._id, role: 'driver' }, JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({
       success: true,
-      message: 'Rider registered successfully',
-      rider: newRider,
+      message: 'Driver registered successfully',
+      data: sanitizeUser(newDriver),
       token,
     });
   } catch (err) {
-    console.error('Rider Registration Error:', JSON.stringify(err, null, 2));
-    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+    console.error('Driver registration error:', err);
+    res.status(500).json({ success: false, message: 'Driver registration failed', error: err.message });
   }
 };
 
-// ========== REGISTER ADMIN ==========
+// REGISTER: ADMIN
 export const registerAdmin = async (req, res) => {
   try {
     const { fullName, phoneNumber, email, password } = req.body;
 
-    if (!fullName || !phoneNumber || !email || !password) {
-      return res.status(400).json({ success: false, message: 'Missing required fields' });
-    }
-
-    const existing = await Admin.findOne({ phoneNumber });
-    if (existing) {
-      return res.status(409).json({ success: false, message: 'Phone number already exists' });
-    }
-
     const hashedPassword = await bcrypt.hash(password, 10);
-    const ghanaCard = (req.files['ghanaCard'] || []).map(file => file.path);
 
-    if (ghanaCard.length < 1 || ghanaCard.length > 2) {
-      return res.status(400).json({ success: false, message: 'Upload 1 or 2 Ghana Card images' });
-    }
-
-    const newAdmin = await Admin.create({
+    const newAdmin = new Admin({
       fullName,
       phoneNumber,
       email,
       password: hashedPassword,
-      ghanaCard,
-      role: 'admin'
     });
 
-    const token = jwt.sign({ id: newAdmin.id, role: 'admin' }, process.env.JWT_SECRET, {
-      expiresIn: '7d',
-    });
+    await newAdmin.save();
+
+    const token = jwt.sign({ id: newAdmin._id, role: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({
       success: true,
       message: 'Admin registered successfully',
-      admin: newAdmin,
+      data: sanitizeUser(newAdmin),
       token,
     });
   } catch (err) {
-    console.error('Admin Registration Error:', JSON.stringify(err, null, 2));
-    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+    console.error('Admin registration error:', err);
+    res.status(500).json({ success: false, message: 'Admin registration failed', error: err.message });
   }
 };
 
-// ========== LOGIN (ALL ROLES) ==========
+// LOGIN: Universal for User, Driver, Admin
 export const loginUser = async (req, res) => {
   try {
     const { phoneNumber, password } = req.body;
 
     if (!phoneNumber || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Phone number and password are required',
-      });
+      return res.status(400).json({ success: false, message: 'Phone number and password are required' });
     }
 
-    let user =
-      await Admin.findOne({ phoneNumber }) ||
-      await Rider.findOne({ phoneNumber }) ||
-      await User.findOne({ phoneNumber });
+    const user =
+      (await User.findOne({ phoneNumber }).select('+password')) ||
+      (await Driver.findOne({ phoneNumber }).select('+password')) ||
+      (await Admin.findOne({ phoneNumber }).select('+password'));
 
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    if (!user.password || typeof user.password !== 'string') {
+      return res.status(500).json({ success: false, message: 'Password hash missing or invalid in user record' });
     }
 
-    const token = jwt.sign(
-      { id: user.id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ success: false, message: 'Invalid password' });
+    }
+
+    const role =
+      user instanceof User ? 'user' :
+      user instanceof Driver ? 'driver' :
+      'admin';
+
+    const token = jwt.sign({ id: user._id, role }, JWT_SECRET, { expiresIn: '7d' });
 
     res.status(200).json({
       success: true,
-      message: 'Login successful',
-      user,
+      message: `${role.charAt(0).toUpperCase() + role.slice(1)} login successful`,
+      data: sanitizeUser(user),
       token,
     });
   } catch (err) {
-    console.error('Login Error:', JSON.stringify(err, null, 2));
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
-      error: err.message,
-    });
+    console.error('Login error:', err);
+    res.status(500).json({ success: false, message: 'Login failed', error: err.message });
   }
 };

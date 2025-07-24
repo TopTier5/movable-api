@@ -1,4 +1,3 @@
-// Schemas/adminSchema.js
 import mongoose from 'mongoose';
 import normalize from 'normalize-mongoose';
 
@@ -23,6 +22,7 @@ const adminSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
+    select: false,
     minlength: 6,
   },
   ghanaCard: {
@@ -33,6 +33,21 @@ const adminSchema = new mongoose.Schema({
       message: 'Upload 1 or 2 Ghana Card images',
     },
   },
+
+  // ✅ New editable fields
+  address: {
+    type: String,
+    trim: true,
+  },
+  emergencyContactName: {
+    type: String,
+    trim: true,
+  },
+  emergencyContactPhone: {
+    type: String,
+    match: [/^\+233\d{9}$/, 'Phone number must be in +233XXXXXXXXX format'],
+  },
+
   role: {
     type: String,
     enum: ['admin'],
