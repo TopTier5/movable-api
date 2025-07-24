@@ -107,13 +107,24 @@ export const registerAdmin = async (req, res) => {
   try {
     const { fullName, phoneNumber, email, password } = req.body;
 
+    // Ensure ghanaCard is uploaded
+    if (!req.files?.ghanaCard || !req.files.ghanaCard.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ghana Card is required. Upload 1 or 2 images.',
+      });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    const ghanaCardFiles = req.files.ghanaCard.map(file => file.path);
 
     const newAdmin = new Admin({
       fullName,
       phoneNumber,
       email,
       password: hashedPassword,
+      ghanaCard: ghanaCardFiles,
     });
 
     await newAdmin.save();
@@ -128,7 +139,11 @@ export const registerAdmin = async (req, res) => {
     });
   } catch (err) {
     console.error('Admin registration error:', err);
-    res.status(500).json({ success: false, message: 'Admin registration failed', error: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Admin registration failed',
+      error: err.message,
+    });
   }
 };
 
